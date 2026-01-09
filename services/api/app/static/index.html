@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Projet Final Conteneurisation</title>
+    <style>
+      body { font-family: system-ui, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 16px; }
+      h1 { font-size: 1.4rem; }
+      input, button { padding: 8px 12px; font-size: 1rem; }
+      .row { display: flex; gap: 8px; margin-bottom: 12px; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+      .card { border: 1px solid #ddd; border-radius: 8px; padding: 16px; }
+    </style>
+  </head>
+  <body>
+    <h1>Mini app: file de jobs asynchrones</h1>
+    <div class="card">
+      <div class="row">
+        <input id="text" placeholder="Entrez du texte (sera transformé en MAJUSCULES)" style="flex:1" />
+        <button id="submit">Soumettre</button>
+      </div>
+      <div>Job ID: <span id="jobId" class="mono">—</span></div>
+      <div>Status: <span id="status" class="mono">—</span></div>
+      <div>Résultat: <span id="result" class="mono">—</span></div>
+    </div>
+
+    <script>
+      const submitBtn = document.getElementById('submit');
+      const textInput = document.getElementById('text');
+      const jobIdEl = document.getElementById('jobId');
+      const statusEl = document.getElementById('status');
+      const resultEl = document.getElementById('result');
+
+      async function poll(jobId) {
+        try {
+          const res = await fetch(`/jobs/${jobId}`);
+          if (!res.ok) { statusEl.textContent = 'introuvable'; return; }
+          const data = await res.json();
+          statusEl.textContent = data.status;
+          resultEl.textContent = data.result ?? '—';
+          if (data.status !== 'done') {
+            setTimeout(() => poll(jobId), 1000);
+          }
+        } catch (e) {
+          statusEl.textContent = 'erreur';
+        }
+      }
+
+      submitBtn.addEventListener('click', async () => {
+        jobIdEl.textContent = '—'; statusEl.textContent = '—'; resultEl.textContent = '—';
+        const text = textInput.value.trim();
+        if (!text) return;
+        const res = await fetch('/jobs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
+        const data = await res.json();
+        jobIdEl.textContent = data.job_id;
+        statusEl.textContent = 'queued';
+        poll(data.job_id);
+      });
+    </script>
+  </body>
+  </html>
